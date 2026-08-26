@@ -1,4 +1,3 @@
-
 using System.Text;
 using System.Text.Json;
 using Azure.Identity;
@@ -175,86 +174,6 @@ app.MapDelete("/bilder/{id:int}", (int id, HttpRequest req) =>
 })
 .WithName("RaderaBild")
 .WithSummary("Radera bild — kräver Admin");
-
-
-// =========================================================
-// Blob Storage
-// =========================================================
-
-// Alla roller får lista filer i Blob Storage
-app.MapGet("/blob/files", async (
-    IBlobService blobService,
-    HttpRequest req) =>
-{
-    if (!HarBehorighet(HamtaRoll(req), "Betraktare"))
-        return Results.StatusCode(403);
-
-    var files = await blobService.GetAllFilesAsync();
-
-    return Results.Ok(files);
-})
-.WithName("HamtaBlobFiler")
-.WithSummary("Lista filer i Blob Storage — alla roller");
-
-
-// Fotograf och Admin får ladda upp en riktig fil till Blob Storage
-app.MapPost("/bilder/upload", async (
-    IFormFile fil,
-    string caption,
-    string? taggar,
-    IBlobService blobService,
-    HttpRequest req) =>
-{
-    if (!HarBehorighet(HamtaRoll(req), "Fotograf"))
-        return Results.StatusCode(403);
-
-    await using var stream = fil.OpenReadStream();
-
-    var uppladdad = await blobService.UploadFileAsync(
-        stream,
-        fil.FileName,
-        fil.ContentType
-    );
-
-    var taggarLista = string.IsNullOrWhiteSpace(taggar)
-        ? new List<string>()
-        : taggar
-            .Split(',')
-            .Select(t => t.Trim())
-            .ToList();
-
-    var b = new Bild(
-        nastaBildId++,
-        uppladdad.FileName,
-        caption,
-        taggarLista,
-        uppladdad.Url
-    );
-
-    bilder.Add(b);
-
-    return Results.Created($"/bilder/{b.Id}", b);
-})
-.DisableAntiforgery()
-.WithName("LaddaUppOchSparaBild")
-.WithSummary("Ladda upp bild till Blob Storage — kräver Fotograf eller Admin");
-
-
-// Bara Admin får radera själva filen från Blob Storage
-app.MapDelete("/blob/files/{fileName}", async (
-    string fileName,
-    IBlobService blobService,
-    HttpRequest req) =>
-{
-    if (!HarBehorighet(HamtaRoll(req), "Admin"))
-        return Results.StatusCode(403);
-
-    await blobService.DeleteFileAsync(fileName);
-
-    return Results.NoContent();
-})
-.WithName("RaderaBlobFil")
-.WithSummary("Radera fil från Blob Storage — kräver Admin");
 
 app.Run();
 
