@@ -8,6 +8,7 @@ namespace MinGramApi.Services
 {
     public class BlobService
     {
+
         private readonly BlobContainerClient _containerClient;
 
         public BlobService(
@@ -16,30 +17,6 @@ namespace MinGramApi.Services
         {
             _containerClient =
                 blobServiceClient.GetBlobContainerClient(containerName);
-        }
-
-        // ======================================================
-        // Skapa tidsbegränsad SAS-URL
-        // ======================================================
-
-        private string SkapaSasUrl(BlobClient blobClient)
-        {
-            if (!blobClient.CanGenerateSasUri)
-            {
-                return blobClient.Uri.ToString();
-            }
-
-            var sasBuilder = new BlobSasBuilder
-            {
-                BlobContainerName = blobClient.BlobContainerName,
-                BlobName = blobClient.Name,
-                Resource = "b",
-                ExpiresOn = DateTimeOffset.UtcNow.AddMinutes(30)
-            };
-
-            sasBuilder.SetPermissions(BlobSasPermissions.Read);
-
-            return blobClient.GenerateSasUri(sasBuilder).ToString();
         }
 
         // ======================================================
@@ -121,8 +98,7 @@ namespace MinGramApi.Services
                     blob.Name,
                     caption,
                     taggar,
-                    blobClient.Uri.ToString(),
-                    SkapaSasUrl(blobClient)
+                    blobClient.Uri.ToString()
                 ));
             }
 
@@ -166,8 +142,7 @@ namespace MinGramApi.Services
                 fileName,
                 caption,
                 taggar,
-                blobClient.Uri.ToString(),
-                SkapaSasUrl(blobClient)
+                blobClient.Uri.ToString()
             );
         }
 
@@ -222,7 +197,7 @@ namespace MinGramApi.Services
 
             return result.Value;
         }
-
-
     }
+
 }
+
