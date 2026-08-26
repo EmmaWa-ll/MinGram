@@ -20,41 +20,49 @@ namespace MinGramApi.Services
         }
 
         // ======================================================
-        // Ladda upp bild
+        // Skapa bild
         // ======================================================
 
-        public async Task<string> UploadAsync(
-            string fileName,
-            Stream content,
-            string? contentType,
-            string caption,
-            List<string> taggar)
+        public async Task<Bild> SkapaBildAsync(NyBild nyBild)
         {
             await _containerClient.CreateIfNotExistsAsync();
 
-            var uniqueName = $"{Guid.NewGuid()}-{fileName}";
+            // Unikt namn i Blob Storage
+            var blobNamn =
+                $"{Guid.NewGuid()}-{nyBild.Namn}";
 
             var blobClient =
-                _containerClient.GetBlobClient(uniqueName);
+                _containerClient.GetBlobClient(blobNamn);
+
+            var metadata = new Dictionary<string, string>
+            {
+                ["caption"] = nyBild.Caption,
+                ["taggar"] = string.Join(
+                    ",",
+                    nyBild.Taggar ?? new List<string>()),
+                ["url"] = nyBild.Url
+            };
+
+            // Vi behöver bara en blob att lagra metadata på.
+            // Själva bilden ligger på URL:en.
+            using var stream =
+                new MemoryStream(Array.Empty<byte>());
 
             var options = new BlobUploadOptions
             {
-                HttpHeaders = new BlobHttpHeaders
-                {
-                    ContentType =
-                        contentType ?? "application/octet-stream"
-                },
-
-                Metadata = new Dictionary<string, string>
-                {
-                    ["caption"] = caption,
-                    ["taggar"] = string.Join(",", taggar)
-                }
+                Metadata = metadata
             };
 
-            await blobClient.UploadAsync(content, options);
+            await blobClient.UploadAsync(
+                stream,
+                options);
 
-            return uniqueName;
+            return new Bild(
+                blobNamn,
+                nyBild.Caption,
+                nyBild.Taggar ?? new List<string>(),
+                nyBild.Url
+            );
         }
 
         // ======================================================
@@ -91,14 +99,18 @@ namespace MinGramApi.Services
                         .ToList()
                     : new List<string>();
 
-                var blobClient =
-                    _containerClient.GetBlobClient(blob.Name);
+                var url =
+                    blob.Metadata.TryGetValue(
+                        "url",
+                        out var u)
+                    ? u
+                    : "";
 
                 bilder.Add(new Bild(
                     blob.Name,
                     caption,
                     taggar,
-                    blobClient.Uri.ToString()
+                    url
                 ));
             }
 
@@ -138,11 +150,18 @@ namespace MinGramApi.Services
                     .ToList()
                 : new List<string>();
 
+            var url =
+                properties.Value.Metadata.TryGetValue(
+                    "url",
+                    out var u)
+                ? u
+                : "";
+
             return new Bild(
                 fileName,
                 caption,
                 taggar,
-                blobClient.Uri.ToString()
+                url
             );
         }
 

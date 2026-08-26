@@ -24,32 +24,9 @@ namespace MinGramApi.Services
         }
 
         // POST
-        public async Task<Bild> SkapaBildAsync(
-     IFormFile fil,
-     string caption,
-     string? taggar)
+        public async Task<Bild> SkapaBildAsync(NyBild nyBild)
         {
-            var taggLista = string.IsNullOrWhiteSpace(taggar)
-                ? new List<string>()
-                : taggar
-                    .Split(',')
-                    .Select(t => t.Trim())
-                    .ToList();
-
-            await using var stream = fil.OpenReadStream();
-
-            var blobNamn = await _blobService.UploadAsync(
-                fil.FileName,
-                stream,
-                fil.ContentType,
-                caption,
-                taggLista
-            );
-
-            var bild =
-                await _blobService.HamtaEnAsync(blobNamn);
-
-            return bild!;
+            return await _blobService.SkapaBildAsync(nyBild);
         }
 
         // PUT

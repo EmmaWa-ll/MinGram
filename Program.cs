@@ -53,7 +53,7 @@ builder.Services.AddSingleton(
     new BlobServiceClient(blobConnectionString));
 
 
-// Din BlobService
+// BlobService
 builder.Services.AddSingleton(sp =>
 {
     var blobServiceClient =
@@ -65,7 +65,7 @@ builder.Services.AddSingleton(sp =>
 });
 
 
-// Din BildService
+// BildService
 builder.Services.AddSingleton<BildService>();
 
 
@@ -133,11 +133,9 @@ app.MapGet("/bilder/{namn}", async (
 
 
 // POST /bilder
-// Fotograf och Admin får ladda upp bilder
+// Fotograf och Admin får lägga till bilder
 app.MapPost("/bilder", async (
-    IFormFile fil,
-    string caption,
-    string? taggar,
+    NyBild nyBild,
     HttpRequest req,
     BildService bildService) =>
 {
@@ -145,19 +143,15 @@ app.MapPost("/bilder", async (
         return Results.StatusCode(403);
 
     var bild =
-        await bildService.SkapaBildAsync(
-            fil,
-            caption,
-            taggar);
+        await bildService.SkapaBildAsync(nyBild);
 
     return Results.Created(
         $"/bilder/{bild.Namn}",
         bild);
 })
-.DisableAntiforgery()
-.WithName("LaddaUppBild")
+.WithName("LaggTillBild")
 .WithSummary(
-    "Ladda upp bild — kräver Fotograf eller Admin");
+    "Lägg till bild — kräver Fotograf eller Admin");
 
 
 // PUT /bilder/{namn}
