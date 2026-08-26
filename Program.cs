@@ -38,7 +38,7 @@ builder.Services.AddCors(options =>
 // (Key Vault → Access policies, eller Access control (IAM) om ni kör
 // RBAC-läge på Key Vault).
 //
-// Sätt "KeyVaultKey:KeyVaultURL" i appsettings/App Service Configuration,
+// Sätt "KeyVaultUrl" i appsettings/App Service Configuration,
 // t.ex. https://ditt-keyvault-namn.vault.azure.net/
 // ---------------------------------------------------------
 var keyVaultUrl = builder.Configuration["KeyVaultUrl"];
@@ -77,7 +77,8 @@ app.UseSwaggerUI();
 app.UseCors("MinGramPolicy");
 
 // -------------------------------------------------------
-// In-memory datastore
+// In-memory metadata (caption/taggar) kopplat till blob-filnamn.
+// Själva bildfilerna ligger i Blob Storage, containern "mingram-bilder".
 // -------------------------------------------------------
 var bilder = new List<Bild>
 {
@@ -96,9 +97,35 @@ var nastaBildId = 2;
 // Bilder
 // =========================================================
 
-app.MapGet("/bilder", () => bilder)
-   .WithName("HamtaBilder")
-   .WithSummary("Hämta alla bilder — alla roller");
+// Läser alla bilder direkt från Blob Storage och matchar mot
+// eventuell metadata (caption/taggar) som finns sparad i minnet.
+app.MapGet("/bilder", async (IBlobService blobService) =>
+{
+    var blobFiler = await blobService.GetAllFilesAsync();
+
+    var resultat = blobFiler.Select(blob =>
+    {
+        var befintlig = bilder.FirstOrDefault(b => b.Namn == blob.FileName);
+
+        return befintlig is not null
+            ? befintlig with { Url = blob.Url }
+            : new Bild(
+                nastaBildId++,
+                blob.FileName,
+                "",
+                new List<string>(),
+                blob.Url
+              );
+    }).ToList();
+
+    // Metadata-poster som saknar motsvarande blob (t.ex. demo-posten) visas också
+    var utanBlob = bilder.Where(b => blobFiler.All(f => f.FileName != b.Namn));
+    resultat.AddRange(utanBlob);
+
+    return Results.Ok(resultat);
+})
+.WithName("HamtaBilder")
+.WithSummary("Hämta alla bilder — läser från Blob Storage, alla roller");
 
 app.MapGet("/bilder/{id:int}", (int id) =>
 {
@@ -112,26 +139,47 @@ app.MapGet("/bilder/{id:int}", (int id) =>
 .WithSummary("Hämta en specifik bild — alla roller");
 
 
-// Fotograf och Admin får lägga till en bild via URL
-app.MapPost("/bilder", (NyBild ny, HttpRequest req) =>
+// Fotograf och Admin får ladda upp en bildfil till Blob Storage
+app.MapPost("/bilder", async (
+    IFormFile fil,
+    string caption,
+    string? taggar,
+    IBlobService blobService,
+    HttpRequest req) =>
 {
     if (!HarBehorighet(HamtaRoll(req), "Fotograf"))
         return Results.StatusCode(403);
 
+    await using var stream = fil.OpenReadStream();
+
+    var uppladdad = await blobService.UploadFileAsync(
+        stream,
+        fil.FileName,
+        fil.ContentType
+    );
+
+    var taggarLista = string.IsNullOrWhiteSpace(taggar)
+        ? new List<string>()
+        : taggar
+            .Split(',')
+            .Select(t => t.Trim())
+            .ToList();
+
     var b = new Bild(
         nastaBildId++,
-        ny.Namn,
-        ny.Caption,
-        ny.Taggar ?? new List<string>(),
-        ny.Url
+        uppladdad.FileName,
+        caption,
+        taggarLista,
+        uppladdad.Url
     );
 
     bilder.Add(b);
 
     return Results.Created($"/bilder/{b.Id}", b);
 })
+.DisableAntiforgery() // krävs för IFormFile i minimal API (.NET 8+)
 .WithName("LaddaUppBild")
-.WithSummary("Lägg till bild via URL — kräver Fotograf eller Admin");
+.WithSummary("Ladda upp bild till Blob Storage — kräver Fotograf eller Admin");
 
 
 // Fotograf och Admin får uppdatera caption och taggar
@@ -224,5 +272,4 @@ bool HarBehorighet(string roll, string kravRoll) => (roll, kravRoll) switch
 // =========================================================
 
 record Bild(int Id, string Namn, string Caption, List<string> Taggar, string Url);
-record NyBild(string Namn, string Caption, List<string>? Taggar, string Url);
 record BildUpdate(string? Caption, List<string>? Taggar);
