@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient();
 
 // -------------------------------------------------------
 // CORS — huvudkonfigurationen görs i Azure Portal:
@@ -125,36 +126,37 @@ app.MapGet("/bilder/{id:int}", (int id) =>
 .WithSummary("Hämta en specifik bild — alla roller");
 
 
-// Fotograf och Admin får ladda upp en bildfil till Blob Storage
+// Fotograf och Admin får spara en bild i Blob Storage utifrån en URL
 app.MapPost("/bilder", async (
-    IFormFile fil,
-    string caption,
-    string? taggar,
+    NyBild ny,
     IBlobService blobService,
+    IHttpClientFactory httpClientFactory,
     HttpRequest req) =>
 {
     if (!HarBehorighet(HamtaRoll(req), "Fotograf"))
         return Results.StatusCode(403);
 
-    await using var stream = fil.OpenReadStream();
+    var httpClient = httpClientFactory.CreateClient();
 
-    var uppladdad = await blobService.UploadFileAsync(
-        stream,
-        fil.FileName,
-        fil.ContentType
-    );
+    using var svar = await httpClient.GetAsync(ny.Url);
+    if (!svar.IsSuccessStatusCode)
+        return Results.BadRequest("Kunde inte hämta bilden från angiven URL.");
 
-    var taggarLista = string.IsNullOrWhiteSpace(taggar)
-        ? new List<string>()
-        : taggar
-            .Split(',')
-            .Select(t => t.Trim())
-            .ToList();
+    var contentType = svar.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+    await using var stream = await svar.Content.ReadAsStreamAsync();
+
+    var filnamn = Path.GetFileName(new Uri(ny.Url).LocalPath);
+    if (string.IsNullOrWhiteSpace(filnamn))
+        filnamn = $"{Guid.NewGuid()}.jpg";
+
+    var uppladdad = await blobService.UploadFileAsync(stream, filnamn, contentType);
+
+    var taggarLista = ny.Taggar ?? new List<string>();
 
     var b = new Bild(
         nastaBildId++,
         uppladdad.FileName,
-        caption,
+        ny.Caption,
         taggarLista,
         uppladdad.Url
     );
@@ -163,9 +165,8 @@ app.MapPost("/bilder", async (
 
     return Results.Created($"/bilder/{b.Id}", b);
 })
-.DisableAntiforgery() // krävs för IFormFile i minimal API (.NET 8+)
 .WithName("LaddaUppBild")
-.WithSummary("Ladda upp bild till Blob Storage — kräver Fotograf eller Admin");
+.WithSummary("Spara bild i Blob Storage utifrån en URL — kräver Fotograf eller Admin");
 
 
 // Fotograf och Admin får uppdatera caption och taggar
@@ -259,4 +260,5 @@ bool HarBehorighet(string roll, string kravRoll) => (roll, kravRoll) switch
 // =========================================================
 
 record Bild(int Id, string Namn, string Caption, List<string> Taggar, string Url);
+record NyBild(string Url, string Caption, List<string>? Taggar);
 record BildUpdate(string? Caption, List<string>? Taggar);
