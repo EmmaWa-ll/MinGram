@@ -78,17 +78,23 @@ app.UseSwaggerUI();
 app.UseCors("MinGramPolicy");
 
 // -------------------------------------------------------
-// In-memory datastore med seed-data
+// In-memory datastore
 // -------------------------------------------------------
 var bilder = new List<Bild>
 {
-    new(1, "demo.jpg", "Demobild — ersätt med din egen", ["demo", "placeholder"],
-        "https://placehold.co/400x300?text=MinGram")
+    new(
+        1,
+        "demo.jpg",
+        "Demobild",
+        new List<string> { "demo" },
+        "https://placehold.co/400x300?text=MinGram"
+    )
 };
+
 var nastaBildId = 2;
 
 // =========================================================
-// Bilder (metadata)
+// Bilder
 // =========================================================
 
 app.MapGet("/bilder", () => bilder)
@@ -98,91 +104,153 @@ app.MapGet("/bilder", () => bilder)
 app.MapGet("/bilder/{id:int}", (int id) =>
 {
     var b = bilder.FirstOrDefault(b => b.Id == id);
-    return b is not null ? Results.Ok(b) : Results.NotFound();
+
+    return b is not null
+        ? Results.Ok(b)
+        : Results.NotFound();
 })
 .WithName("HamtaBild")
 .WithSummary("Hämta en specifik bild — alla roller");
 
-// Skicka en redan befintlig URL (t.ex. om filen laddats upp separat via /blob/upload)
+
+// Fotograf och Admin får lägga till en bild via URL
 app.MapPost("/bilder", (NyBild ny, HttpRequest req) =>
 {
-    if (!HarBehorighet(HamtaRoll(req), "Fotograf")) return Results.StatusCode(403);
-    var b = new Bild(nastaBildId++, ny.Namn, ny.Caption, ny.Taggar ?? [], ny.Url);
+    if (!HarBehorighet(HamtaRoll(req), "Fotograf"))
+        return Results.StatusCode(403);
+
+    var b = new Bild(
+        nastaBildId++,
+        ny.Namn,
+        ny.Caption,
+        ny.Taggar ?? new List<string>(),
+        ny.Url
+    );
+
     bilder.Add(b);
+
     return Results.Created($"/bilder/{b.Id}", b);
 })
 .WithName("LaddaUppBild")
 .WithSummary("Lägg till bild via URL — kräver Fotograf eller Admin");
 
+
+// Fotograf och Admin får uppdatera caption och taggar
 app.MapPut("/bilder/{id:int}", (int id, BildUpdate update, HttpRequest req) =>
 {
-    if (!HarBehorighet(HamtaRoll(req), "Fotograf")) return Results.StatusCode(403);
+    if (!HarBehorighet(HamtaRoll(req), "Fotograf"))
+        return Results.StatusCode(403);
+
     var index = bilder.FindIndex(b => b.Id == id);
-    if (index < 0) return Results.NotFound();
+
+    if (index < 0)
+        return Results.NotFound();
+
     bilder[index] = bilder[index] with
     {
         Caption = update.Caption ?? bilder[index].Caption,
         Taggar = update.Taggar ?? bilder[index].Taggar
     };
+
     return Results.Ok(bilder[index]);
 })
 .WithName("UppdateraBild")
 .WithSummary("Uppdatera bild — kräver Fotograf eller Admin");
 
-// Ta bort bild-posten (raderar inte automatiskt filen i Blob Storage,
-// se DELETE /blob/files/{fileName} om ni vill städa bort själva filen också)
+
+// Bara Admin får ta bort bild-posten
 app.MapDelete("/bilder/{id:int}", (int id, HttpRequest req) =>
 {
-    if (!HarBehorighet(HamtaRoll(req), "Admin")) return Results.StatusCode(403);
+    if (!HarBehorighet(HamtaRoll(req), "Admin"))
+        return Results.StatusCode(403);
+
     var b = bilder.FirstOrDefault(b => b.Id == id);
-    if (b is null) return Results.NotFound();
+
+    if (b is null)
+        return Results.NotFound();
+
     bilder.Remove(b);
+
     return Results.NoContent();
 })
 .WithName("RaderaBild")
 .WithSummary("Radera bild — kräver Admin");
 
+
 // =========================================================
-// Blob Storage — själva filerna
+// Blob Storage
 // =========================================================
 
-// Lista alla filer som faktiskt ligger i containern
-app.MapGet("/blob/files", async (IBlobService blobService, HttpRequest req) =>
+// Alla roller får lista filer i Blob Storage
+app.MapGet("/blob/files", async (
+    IBlobService blobService,
+    HttpRequest req) =>
 {
-    if (!HarBehorighet(HamtaRoll(req), "Betraktare")) return Results.StatusCode(403);
-    return Results.Ok(await blobService.GetAllFilesAsync());
+    if (!HarBehorighet(HamtaRoll(req), "Betraktare"))
+        return Results.StatusCode(403);
+
+    var files = await blobService.GetAllFilesAsync();
+
+    return Results.Ok(files);
 })
 .WithName("HamtaBlobFiler")
 .WithSummary("Lista filer i Blob Storage — alla roller");
 
-// Ladda upp en fil direkt till Blob Storage och skapa en bild-post i samma anrop
+
+// Fotograf och Admin får ladda upp en riktig fil till Blob Storage
 app.MapPost("/bilder/upload", async (
-        IFormFile fil, string caption, string? taggar,
-        IBlobService blobService, HttpRequest req) =>
+    IFormFile fil,
+    string caption,
+    string? taggar,
+    IBlobService blobService,
+    HttpRequest req) =>
 {
-    if (!HarBehorighet(HamtaRoll(req), "Fotograf")) return Results.StatusCode(403);
+    if (!HarBehorighet(HamtaRoll(req), "Fotograf"))
+        return Results.StatusCode(403);
 
     await using var stream = fil.OpenReadStream();
-    var uppladdad = await blobService.UploadFileAsync(stream, fil.FileName, fil.ContentType);
+
+    var uppladdad = await blobService.UploadFileAsync(
+        stream,
+        fil.FileName,
+        fil.ContentType
+    );
 
     var taggarLista = string.IsNullOrWhiteSpace(taggar)
         ? new List<string>()
-        : taggar.Split(',').Select(t => t.Trim()).ToList();
+        : taggar
+            .Split(',')
+            .Select(t => t.Trim())
+            .ToList();
 
-    var b = new Bild(nastaBildId++, uppladdad.FileName, caption, taggarLista, uppladdad.Url);
+    var b = new Bild(
+        nastaBildId++,
+        uppladdad.FileName,
+        caption,
+        taggarLista,
+        uppladdad.Url
+    );
+
     bilder.Add(b);
 
     return Results.Created($"/bilder/{b.Id}", b);
 })
-.DisableAntiforgery() // krävs för IFormFile i minimal API (.NET 8+)
+.DisableAntiforgery()
 .WithName("LaddaUppOchSparaBild")
-.WithSummary("Ladda upp bildfil till Blob Storage och skapa bild-post — kräver Fotograf eller Admin");
+.WithSummary("Ladda upp bild till Blob Storage — kräver Fotograf eller Admin");
 
-// Radera en fil direkt i Blob Storage (oberoende av bild-posten)
-app.MapDelete("/blob/files/{fileName}", async (string fileName, IBlobService blobService, HttpRequest req) =>
+
+// Bara Admin får radera själva filen från Blob Storage
+app.MapDelete("/blob/files/{fileName}", async (
+    string fileName,
+    IBlobService blobService,
+    HttpRequest req) =>
 {
-    if (!HarBehorighet(HamtaRoll(req), "Admin")) return Results.StatusCode(403);
+    if (!HarBehorighet(HamtaRoll(req), "Admin"))
+        return Results.StatusCode(403);
+
     await blobService.DeleteFileAsync(fileName);
+
     return Results.NoContent();
 })
 .WithName("RaderaBlobFil")
