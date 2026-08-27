@@ -18,9 +18,9 @@ namespace MinGramApi.Services
         }
 
         // GET en
-        public async Task<Bild?> HamtaEnAsync(string namn)
+        public async Task<Bild?> HamtaEnAsync(string id)
         {
-            return await _blobService.HamtaEnAsync(namn);
+            return await _blobService.HamtaEnAsync(id);
         }
 
         // POST
@@ -31,17 +31,17 @@ namespace MinGramApi.Services
 
         // PUT
         public async Task<Bild?> UppdateraBildAsync(
-            string namn,
+            string id,
             BildUpdate update)
         {
             return await _blobService
-                .UppdateraMetadataAsync(namn, update);
+                .UppdateraMetadataAsync(id, update);
         }
 
         // DELETE
-        public async Task<bool> RaderaBildAsync(string namn)
+        public async Task<bool> RaderaBildAsync(string id)
         {
-            return await _blobService.DeleteAsync(namn);
+            return await _blobService.DeleteAsync(id);
         }
     }
 }

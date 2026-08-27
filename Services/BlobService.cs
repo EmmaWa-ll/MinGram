@@ -27,15 +27,20 @@ namespace MinGramApi.Services
         {
             await _containerClient.CreateIfNotExistsAsync();
 
-            // Unikt namn i Blob Storage
+            // Skapa unikt id
+            var id = Guid.NewGuid().ToString();
+
+            // Blobnamnet innehåller både id och originalnamn
             var blobNamn =
-                $"{Guid.NewGuid()}-{nyBild.Namn}";
+                $"{id}-{nyBild.Namn}";
 
             var blobClient =
                 _containerClient.GetBlobClient(blobNamn);
 
             var metadata = new Dictionary<string, string>
             {
+                ["id"] = id,
+                ["namn"] = nyBild.Namn,
                 ["caption"] = nyBild.Caption,
                 ["taggar"] = string.Join(
                     ",",
@@ -43,8 +48,6 @@ namespace MinGramApi.Services
                 ["url"] = nyBild.Url
             };
 
-            // Vi behöver bara en blob att lagra metadata på.
-            // Själva bilden ligger på URL:en.
             using var stream =
                 new MemoryStream(Array.Empty<byte>());
 
@@ -58,7 +61,8 @@ namespace MinGramApi.Services
                 options);
 
             return new Bild(
-                blobNamn,
+                id,
+                nyBild.Namn,
                 nyBild.Caption,
                 nyBild.Taggar ?? new List<string>(),
                 nyBild.Url
@@ -81,33 +85,38 @@ namespace MinGramApi.Services
             await foreach (
                 var blob in _containerClient.GetBlobsAsync(options))
             {
+                var id =
+                    blob.Metadata.TryGetValue("id", out var i)
+                        ? i
+                        : "";
+
+                var namn =
+                    blob.Metadata.TryGetValue("namn", out var n)
+                        ? n
+                        : blob.Name;
+
                 var caption =
-                    blob.Metadata.TryGetValue(
-                        "caption",
-                        out var c)
-                    ? c
-                    : "";
+                    blob.Metadata.TryGetValue("caption", out var c)
+                        ? c
+                        : "";
 
                 var taggar =
-                    blob.Metadata.TryGetValue(
-                        "taggar",
-                        out var t)
-                    ? t.Split(
-                            ",",
-                            StringSplitOptions.RemoveEmptyEntries)
-                        .Select(x => x.Trim())
-                        .ToList()
-                    : new List<string>();
+                    blob.Metadata.TryGetValue("taggar", out var t)
+                        ? t.Split(
+                                ",",
+                                StringSplitOptions.RemoveEmptyEntries)
+                            .Select(x => x.Trim())
+                            .ToList()
+                        : new List<string>();
 
                 var url =
-                    blob.Metadata.TryGetValue(
-                        "url",
-                        out var u)
-                    ? u
-                    : "";
+                    blob.Metadata.TryGetValue("url", out var u)
+                        ? u
+                        : "";
 
                 bilder.Add(new Bild(
-                    blob.Name,
+                    id,
+                    namn,
                     caption,
                     taggar,
                     url
@@ -118,65 +127,73 @@ namespace MinGramApi.Services
         }
 
         // ======================================================
-        // Hämta en bild
+        // Hämta en bild via id
         // ======================================================
 
-        public async Task<Bild?> HamtaEnAsync(string fileName)
+        public async Task<Bild?> HamtaEnAsync(string id)
         {
-            var blobClient =
-                _containerClient.GetBlobClient(fileName);
+            var options = new GetBlobsOptions
+            {
+                Traits = BlobTraits.Metadata
+            };
 
-            if (!await blobClient.ExistsAsync())
-                return null;
+            await foreach (
+                var blob in _containerClient.GetBlobsAsync(options))
+            {
+                if (!blob.Metadata.TryGetValue("id", out var blobId))
+                    continue;
 
-            var properties =
-                await blobClient.GetPropertiesAsync();
+                if (blobId != id)
+                    continue;
 
-            var caption =
-                properties.Value.Metadata.TryGetValue(
-                    "caption",
-                    out var c)
-                ? c
-                : "";
+                var namn =
+                    blob.Metadata.TryGetValue("namn", out var n)
+                        ? n
+                        : blob.Name;
 
-            var taggar =
-                properties.Value.Metadata.TryGetValue(
-                    "taggar",
-                    out var t)
-                ? t.Split(
-                        ",",
-                        StringSplitOptions.RemoveEmptyEntries)
-                    .Select(x => x.Trim())
-                    .ToList()
-                : new List<string>();
+                var caption =
+                    blob.Metadata.TryGetValue("caption", out var c)
+                        ? c
+                        : "";
 
-            var url =
-                properties.Value.Metadata.TryGetValue(
-                    "url",
-                    out var u)
-                ? u
-                : "";
+                var taggar =
+                    blob.Metadata.TryGetValue("taggar", out var t)
+                        ? t.Split(
+                                ",",
+                                StringSplitOptions.RemoveEmptyEntries)
+                            .Select(x => x.Trim())
+                            .ToList()
+                        : new List<string>();
 
-            return new Bild(
-                fileName,
-                caption,
-                taggar,
-                url
-            );
+                var url =
+                    blob.Metadata.TryGetValue("url", out var u)
+                        ? u
+                        : "";
+
+                return new Bild(
+                    id,
+                    namn,
+                    caption,
+                    taggar,
+                    url
+                );
+            }
+
+            return null;
         }
 
         // ======================================================
-        // Uppdatera caption och taggar
+        // Uppdatera caption och taggar via id
         // ======================================================
 
         public async Task<Bild?> UppdateraMetadataAsync(
-            string fileName,
+            string id,
             BildUpdate update)
         {
             var blobClient =
-                _containerClient.GetBlobClient(fileName);
+                await HamtaBlobClientViaIdAsync(id);
 
-            if (!await blobClient.ExistsAsync())
+            if (blobClient is null)
                 return null;
 
             var properties =
@@ -200,21 +217,53 @@ namespace MinGramApi.Services
 
             await blobClient.SetMetadataAsync(metadata);
 
-            return await HamtaEnAsync(fileName);
+            return await HamtaEnAsync(id);
         }
 
         // ======================================================
-        // Radera bild
+        // Radera bild via id
         // ======================================================
 
-        public async Task<bool> DeleteAsync(string fileName)
+        public async Task<bool> DeleteAsync(string id)
         {
+            var blobClient =
+                await HamtaBlobClientViaIdAsync(id);
+
+            if (blobClient is null)
+                return false;
+
             var result =
-                await _containerClient
-                    .GetBlobClient(fileName)
-                    .DeleteIfExistsAsync();
+                await blobClient.DeleteIfExistsAsync();
 
             return result.Value;
+        }
+
+        // ======================================================
+        // Hjälpmetod: hitta rätt blob från id
+        // ======================================================
+
+        private async Task<BlobClient?> HamtaBlobClientViaIdAsync(
+            string id)
+        {
+            var options = new GetBlobsOptions
+            {
+                Traits = BlobTraits.Metadata
+            };
+
+            await foreach (
+                var blob in _containerClient.GetBlobsAsync(options))
+            {
+                if (blob.Metadata.TryGetValue(
+                        "id",
+                        out var blobId)
+                    && blobId == id)
+                {
+                    return _containerClient
+                        .GetBlobClient(blob.Name);
+                }
+            }
+
+            return null;
         }
     }
 

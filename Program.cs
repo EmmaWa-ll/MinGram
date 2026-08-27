@@ -93,6 +93,8 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseHttpsRedirection();
+
 app.UseCors("MinGramPolicy");
 
 
@@ -117,12 +119,12 @@ app.MapGet("/bilder", async (
 
 // GET /bilder/{namn}
 // Alla roller får hämta en specifik bild
-app.MapGet("/bilder/{namn}", async (
-    string namn,
+app.MapGet("/bilder/{id}", async (
+    string id,
     BildService bildService) =>
 {
     var bild =
-        await bildService.HamtaEnAsync(namn);
+        await bildService.HamtaEnAsync(id);
 
     return bild is not null
         ? Results.Ok(bild)
@@ -146,18 +148,17 @@ app.MapPost("/bilder", async (
         await bildService.SkapaBildAsync(nyBild);
 
     return Results.Created(
-        $"/bilder/{bild.Namn}",
+        $"/bilder/{bild.Id}",
         bild);
 })
 .WithName("LaggTillBild")
 .WithSummary(
     "Lägg till bild — kräver Fotograf eller Admin");
 
-
 // PUT /bilder/{namn}
 // Fotograf och Admin får uppdatera caption och taggar
-app.MapPut("/bilder/{namn}", async (
-    string namn,
+app.MapPut("/bilder/{id}", async (
+    string id,
     BildUpdate update,
     HttpRequest req,
     BildService bildService) =>
@@ -167,7 +168,7 @@ app.MapPut("/bilder/{namn}", async (
 
     var bild =
         await bildService.UppdateraBildAsync(
-            namn,
+            id,
             update);
 
     return bild is not null
@@ -178,11 +179,10 @@ app.MapPut("/bilder/{namn}", async (
 .WithSummary(
     "Uppdatera bild — kräver Fotograf eller Admin");
 
-
 // DELETE /bilder/{namn}
 // Bara Admin får ta bort bilder
-app.MapDelete("/bilder/{namn}", async (
-    string namn,
+app.MapDelete("/bilder/{id}", async (
+    string id,
     HttpRequest req,
     BildService bildService) =>
 {
@@ -190,7 +190,7 @@ app.MapDelete("/bilder/{namn}", async (
         return Results.StatusCode(403);
 
     var borttagen =
-        await bildService.RaderaBildAsync(namn);
+        await bildService.RaderaBildAsync(id);
 
     return borttagen
         ? Results.NoContent()
@@ -204,13 +204,35 @@ app.MapDelete("/bilder/{namn}", async (
 app.Run();
 
 
-// ======================================================
-// Rollkontroll
-// ======================================================
-
 string HamtaRoll(HttpRequest request)
 {
-    // Easy Auth-header från Azure
+    // ======================================================
+    // Demo-roll
+    // Används eftersom Entra ID inte kan användas
+    // med skolkontot.
+    // ======================================================
+
+    var demoRoll =
+        request.Headers["X-Demo-Role"]
+            .FirstOrDefault();
+
+    if (!string.IsNullOrWhiteSpace(demoRoll))
+    {
+        if (demoRoll == "Admin" ||
+            demoRoll == "Fotograf" ||
+            demoRoll == "Betraktare")
+        {
+            return demoRoll;
+        }
+    }
+
+
+
+
+    // ======================================================
+    // Easy Auth / Entra ID
+    // ======================================================
+
     var header =
         request.Headers["X-MS-CLIENT-PRINCIPAL"]
             .FirstOrDefault();
@@ -247,8 +269,10 @@ string HamtaRoll(HttpRequest request)
     }
 
     return "Betraktare";
-}
 
+
+
+}
 
 // ======================================================
 // Behörighet
@@ -260,11 +284,15 @@ bool HarBehorighet(
     string kravRoll) =>
     (roll, kravRoll) switch
     {
+        // Alla roller får läsa
         (_, "Betraktare") => true,
 
+        // Fotograf och Admin får skapa/uppdatera
         ("Fotograf" or "Admin", "Fotograf") => true,
 
+        // Endast Admin får radera
         ("Admin", "Admin") => true,
 
+        // Allt annat nekas
         _ => false
     };
