@@ -15,19 +15,20 @@ builder.Services.AddSwaggerGen();
 // Key Vault
 // ======================================================
 
-var keyVaultUrl = builder.Configuration["KeyVaultUrl"];
-
-if (string.IsNullOrWhiteSpace(keyVaultUrl))
+if (!builder.Environment.IsDevelopment())
 {
-    throw new InvalidOperationException(
-        "KeyVault URL saknas i konfigurationen.");
+    var keyVaultUrl = builder.Configuration["KeyVaultUrl"];
+
+    if (string.IsNullOrWhiteSpace(keyVaultUrl))
+    {
+        throw new InvalidOperationException(
+            "KeyVault URL saknas i konfigurationen.");
+    }
+
+    builder.Configuration.AddAzureKeyVault(
+        new Uri(keyVaultUrl),
+        new DefaultAzureCredential());
 }
-
-builder.Configuration.AddAzureKeyVault(
-    new Uri(keyVaultUrl),
-    new DefaultAzureCredential());
-
-
 // ======================================================
 // Blob Storage
 // ======================================================

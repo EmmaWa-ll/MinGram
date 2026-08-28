@@ -1,0 +1,433 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap");
+
+:root {
+  /* --- Monaco / casino-lyx --- */
+  --bg: #0a0d13;
+  --bg-vign:
+    radial-gradient(
+      circle at 15% -10%,
+      rgba(205, 164, 94, 0.08),
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 90% 110%,
+      rgba(124, 138, 156, 0.05),
+      transparent 50%
+    );
+
+  --surface: #12161f;
+  --surface-2: #1b2130;
+  --surface-glass: rgba(19, 23, 33, 0.72);
+
+  --text: #f2ecdd;
+  --muted: #8b93a7;
+
+  --gold: #cda45e;
+  --gold-bright: #e8c777;
+  --gold-dim: rgba(205, 164, 94, 0.15);
+
+  --accent-fotograf: #b8815a;
+  --accent-view: #7c8a9c;
+  --danger: #b5453a;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  --hairline: rgba(205, 164, 94, 0.18);
+}
+
+body {
+  background: var(--bg);
+  background-image: var(--bg-vign);
+  color: var(--text);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sida {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 24px 100px;
+}
+
+/* ---------- Apphuvud ---------- */
+
+.apphuvud {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 32px;
+  margin-bottom: 36px;
+  position: relative;
+}
+
+.apphuvud::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--gold) 0%,
+    var(--hairline) 35%,
+    transparent 80%
+  );
+}
+
+.varumarke-ikon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: conic-gradient(
+    from 220deg,
+    var(--gold-bright),
+    var(--gold),
+    #8a6a35,
+    var(--gold-bright)
+  );
+  box-shadow:
+    0 0 0 1px rgba(205, 164, 94, 0.35),
+    0 6px 20px rgba(205, 164, 94, 0.25);
+}
+
+.apphuvud h1 {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 32px;
+  margin: 0;
+  letter-spacing: -0.01em;
+  background: linear-gradient(180deg, #fff7e8 0%, var(--gold-bright) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.undertext {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* ---------- Demo-rad (rollväljare) ---------- */
+
+.demorad {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding: 14px 18px;
+  background: var(--surface-glass);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  backdrop-filter: blur(6px);
+}
+
+.falt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.falt--bred {
+  grid-column: span 2;
+}
+
+.falt input,
+.falt select {
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-width: 180px;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.falt input:focus,
+.falt select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+
+.falt input:focus-visible,
+.falt select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.rollbricka {
+  align-self: center;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.rollbricka--admin {
+  background: linear-gradient(
+    135deg,
+    rgba(232, 199, 119, 0.18),
+    rgba(205, 164, 94, 0.08)
+  );
+  color: var(--gold-bright);
+  border-color: rgba(205, 164, 94, 0.45);
+}
+.rollbricka--fotograf {
+  background: rgba(184, 129, 90, 0.15);
+  color: #e0a87e;
+  border-color: rgba(184, 129, 90, 0.4);
+}
+.rollbricka--betraktare {
+  background: color-mix(in srgb, var(--accent-view) 15%, transparent);
+  color: #b6c0cc;
+  border-color: color-mix(in srgb, var(--accent-view) 40%, transparent);
+}
+
+/* ---------- Meddelanden ---------- */
+
+.felbanner {
+  background: rgba(181, 69, 58, 0.12);
+  border: 1px solid rgba(181, 69, 58, 0.4);
+  color: #eea89e;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.tom-vy {
+  color: var(--muted);
+  font-size: 14px;
+  padding: 60px 0;
+  text-align: center;
+  font-family: "DM Mono", monospace;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Verktygsrad / knappar ---------- */
+
+.verktygsrad {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.knapp {
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  padding: 11px 18px;
+  border: 1px solid var(--surface-2);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    transform 0.05s ease;
+}
+
+.knapp:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+.knapp:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.knapp:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.knapp:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.knapp--primar {
+  background: linear-gradient(
+    135deg,
+    var(--gold-bright),
+    var(--gold) 60%,
+    #a5813f
+  );
+  border-color: var(--gold);
+  color: #1a1206;
+  font-weight: 600;
+}
+.knapp--primar:hover:not(:disabled) {
+  box-shadow: 0 4px 24px rgba(205, 164, 94, 0.35);
+}
+
+.knapp--ghost {
+  background: transparent;
+}
+.knapp--ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.knapp--liten {
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+.knapp--fara {
+  color: #eea89e;
+  border-color: rgba(181, 69, 58, 0.4);
+}
+.knapp--fara:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+/* ---------- Formulär ---------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.panel-grid .falt input {
+  width: 100%;
+  min-width: 0;
+}
+
+.redigera-formular {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.redigera-formular input {
+  width: 100%;
+}
+
+/* ---------- Galleri ---------- */
+
+.galleri {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 24px;
+  transition: opacity 0.2s ease;
+}
+
+.galleri[data-laddar="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.kort {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.kort:hover {
+  transform: translateY(-3px);
+  border-color: var(--gold);
+  box-shadow: var(--shadow-lg);
+}
+
+.kort-perforering {
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold), transparent 70%);
+  opacity: 0.6;
+}
+
+.kort img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-2);
+}
+
+.kort-innehall {
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kort-caption {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.tagg-rad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tagg {
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  color: var(--gold-bright);
+  background: var(--gold-dim);
+  padding: 3px 9px;
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+.tagg:hover {
+  background: rgba(205, 164, 94, 0.28);
+}
+
+.kort-atgarder {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+  .falt--bred {
+    grid-column: span 1;
+  }
+  .demorad {
+    flex-wrap: wrap;
+  }
+}
