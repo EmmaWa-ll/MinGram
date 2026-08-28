@@ -102,14 +102,6 @@ export default function App() {
       {fel && <div className="felbanner">{fel}</div>}
 
       <div className="verktygsrad">
-        <button
-          onClick={hamta}
-          disabled={laddar}
-          className="knapp knapp--ghost"
-        >
-          {laddar ? "Hämtar…" : "Uppdatera"}
-        </button>
-
         {farLadda(roll) && (
           <button
             onClick={() => setVisaFormular((v) => !v)}
