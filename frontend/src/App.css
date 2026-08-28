@@ -2,7 +2,9 @@
 
 :root {
   /* --- Monaco / casino-lyx --- */
+
   --bg: #0a0d13;
+
   --bg-vign:
     radial-gradient(
       circle at 15% -10%,
@@ -18,29 +20,37 @@
   --surface: #12161f;
   --surface-2: #1b2130;
   --surface-glass: rgba(19, 23, 33, 0.72);
-
   --text: #f2ecdd;
   --muted: #8b93a7;
-
   --gold: #cda45e;
   --gold-bright: #e8c777;
   --gold-dim: rgba(205, 164, 94, 0.15);
-
   --accent-fotograf: #b8815a;
   --accent-view: #7c8a9c;
   --danger: #b5453a;
-
   --radius: 14px;
   --radius-sm: 9px;
   --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.55);
   --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.35);
-
   --hairline: rgba(205, 164, 94, 0.18);
 }
 
+/* Bara detta är tillagt för att bakgrunden ska täcka hela sidan korrekt */
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-  background: var(--bg);
+  min-height: 100vh;
+  background-color: var(--bg);
   background-image: var(--bg-vign);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--text);
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -116,7 +126,7 @@ body {
   letter-spacing: 0.12em;
 }
 
-/* ---------- Demo-rad (rollväljare) ---------- */
+/* ---------- Demo-rad ---------- */
 
 .demorad {
   display: flex;
@@ -194,11 +204,13 @@ body {
   color: var(--gold-bright);
   border-color: rgba(205, 164, 94, 0.45);
 }
+
 .rollbricka--fotograf {
   background: rgba(184, 129, 90, 0.15);
   color: #e0a87e;
   border-color: rgba(184, 129, 90, 0.4);
 }
+
 .rollbricka--betraktare {
   background: color-mix(in srgb, var(--accent-view) 15%, transparent);
   color: #b6c0cc;
@@ -254,13 +266,16 @@ body {
 .knapp:hover:not(:disabled) {
   border-color: var(--gold);
 }
+
 .knapp:active:not(:disabled) {
   transform: translateY(1px);
 }
+
 .knapp:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
 .knapp:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
@@ -277,6 +292,7 @@ body {
   color: #1a1206;
   font-weight: 600;
 }
+
 .knapp--primar:hover:not(:disabled) {
   box-shadow: 0 4px 24px rgba(205, 164, 94, 0.35);
 }
@@ -284,6 +300,7 @@ body {
 .knapp--ghost {
   background: transparent;
 }
+
 .knapp--ghost:hover:not(:disabled) {
   background: var(--surface-2);
 }
@@ -297,6 +314,7 @@ body {
   color: #eea89e;
   border-color: rgba(181, 69, 58, 0.4);
 }
+
 .knapp--fara:hover:not(:disabled) {
   border-color: var(--danger);
 }
@@ -329,6 +347,7 @@ body {
   flex-direction: column;
   gap: 12px;
 }
+
 .redigera-formular input {
   width: 100%;
 }
@@ -424,9 +443,11 @@ body {
   .panel-grid {
     grid-template-columns: 1fr;
   }
+
   .falt--bred {
     grid-column: span 1;
   }
+
   .demorad {
     flex-wrap: wrap;
   }
